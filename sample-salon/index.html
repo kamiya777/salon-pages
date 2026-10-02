@@ -31,7 +31,7 @@
     category: 'Private Nail Salon',       // 名前の上に小さく添える英字（空でも可）
     message: '完全予約制のプライベートサロンです。\nご予約はWebから24時間受け付けています。',
 
-    bookingUrl: 'https://script.google.com/macros/s/AKfycbyeqfhHoyEK1fFyG5v41tTEa9FdhWD6Fak9tBjADkJrp52JjzEhU1tC95_htbn3FiKT1A/exec', // 予約ページのURL（/exec で終わるもの）
+    bookingUrl: 'https://script.google.com/macros/s/AKfycbwVfejx-KX9bG1mIrsaNWwXROmX5HeTu54ayRy6kA-B80pMJQQxsZKKU3XlbvTCz4mn0A/exec', // 予約ページのURL（/exec で終わるもの）
     themeColor: '#B07A62',                // スプレッドシートの「テーマカラー」と同じ色にすると、予約画面と色がそろいます
     photo: '',                            // 上のアーチに入れる写真のURL（空なら色の背景に頭文字）
 
@@ -51,7 +51,7 @@
     ],
     menuNote: 'メニューの詳しい内容と空き状況は、予約画面でご確認いただけます。',
     notes: [
-      'ご予約の確認・キャンセルは、予約確認メールのリンクか、予約画面の「ご予約の確認・キャンセル」からできます。',
+      'ご予約の確認・キャンセルは、予約確認メールのリンクか、このページの「ご予約の確認・キャンセル」からできます。',
       'キャンセルはご予約の24時間前までにお願いいたします。'
     ],
 
@@ -152,6 +152,9 @@
   .cta-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
   .cta-sub span { display: inline-flex; align-items: center; gap: 6px; }
   .cta-sub span::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+
+  .lookup { text-align: center; font-size: 13px; color: var(--muted); }
+  .lookup a { color: var(--accent); font-weight: 600; text-underline-offset: 3px; padding: 6px 2px; }
 
   /* アプリ内ブラウザで開いているときの案内 */
   .hint { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; margin-top: 16px; padding: 12px 16px; border-radius: 16px; background: var(--accent-weak); font-size: 12.5px; line-height: 1.7; }
@@ -274,6 +277,7 @@
       <svg class="arw" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg>
     </a>
     <p class="cta-sub"><span>24時間受付</span><span>空き状況がすぐわかります</span></p>
+    <p class="lookup" id="lookup-row">ご予約済みの方は <a id="lookup" href="#">ご予約の確認・キャンセル</a></p>
   </div>
 
   <div class="hint" id="hint" hidden>
@@ -328,7 +332,7 @@
           <div class="m-menu" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M11 3h6v6M17 3l-8 8M14 12v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg><span>外部ブラウザで開く</span></div>
         </div>
       </li>
-      <li><div><span>開いたページで、もう一度 <b>「Web予約する」</b> を押す</span></div></li>
+      <li><div><span>開いたページで、もう一度 <b id="step3">「Web予約する」</b> を押す</span></div></li>
     </ol>
     <div class="copy">
       <p id="copy-lead">うまくいかないときは、予約ページのURLをコピーして、<span id="browser-name">Safari</span>のアドレス欄に貼り付けてください。</p>
@@ -439,35 +443,41 @@
     $('notes-sec').hidden = false;
   }
 
-  // ---- 予約ボタン ----
-  var books = [$('book'), $('bar-book')];
-  function plainHref() {
-    // LINEの中では openExternalBrowser=1 を付けると、LINEがふだんのブラウザで開いてくれる
-    return app === 'LINE' ? url + (url.indexOf('?') < 0 ? '?' : '&') + 'openExternalBrowser=1' : url;
-  }
-  function intentHref() {
-    return 'intent://' + url.replace(/^https:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
-  }
+  // ---- 予約ボタンと「ご予約の確認・キャンセル」 ----
+  function withParam(u, kv) { return u + (u.indexOf('?') < 0 ? '?' : '&') + kv; }
+  // LINEの中では openExternalBrowser=1 を付けると、LINEがふだんのブラウザで開いてくれる
+  function plainHref(u) { return app === 'LINE' ? withParam(u, 'openExternalBrowser=1') : u; }
+  function intentHref(u) { return 'intent://' + u.replace(/^https:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end'; }
+
+  var targets = {
+    book: { url: url, label: '「Web予約する」' },
+    lookup: { url: url ? withParam(url, 'view=lookup') : '', label: '「ご予約の確認・キャンセル」' }
+  };
+  var links = [[$('book'), targets.book], [$('bar-book'), targets.book], [$('lookup'), targets.lookup]];
 
   if (!url) {
-    books.forEach(function (b) { b.removeAttribute('href'); b.setAttribute('aria-disabled', 'true'); });
+    links.forEach(function (l) { l[0].removeAttribute('href'); l[0].setAttribute('aria-disabled', 'true'); });
     $('book-label').textContent = '予約ページを準備中です';
     document.querySelector('.cta-sub').hidden = true;
+    $('lookup-row').hidden = true;
   } else {
-    books.forEach(function (b) { b.href = plainHref(); b.addEventListener('click', onBook); });
+    links.forEach(function (l) {
+      l[0].href = plainHref(l[1].url);
+      l[0].addEventListener('click', function (e) { go(e, l[1]); });
+    });
   }
 
-  function onBook(e) {
+  function go(e, t) {
     if (!app || app === 'LINE') return; // ふつうに開く
     e.preventDefault();
     if (isAndroid) {
       // Chromeに渡す。開けなかったとき（画面が残ったまま）は案内を出す
-      var timer = setTimeout(openSheet, 1600);
+      var timer = setTimeout(function () { openSheet(t); }, 1600);
       document.addEventListener('visibilitychange', function () { if (document.hidden) clearTimeout(timer); }, { once: true });
-      location.href = intentHref();
+      location.href = intentHref(t.url);
       return;
     }
-    openSheet();
+    openSheet(t);
   }
 
   // ---- アプリ内ブラウザの案内 ----
@@ -488,11 +498,17 @@
     $('step2').innerHTML = '<b>「外部ブラウザで開く」</b>（または「Chromeで開く」）を選ぶ';
   }
   $('m-host').textContent = location.hostname || 'salon.example.com';
-  $('url').value = url;
-  $('open-here').href = url || '#';
 
   var sheet = $('sheet'), lastFocus = null;
-  function openSheet() {
+  var sheetUrl = url;
+  function openSheet(t) {
+    t = t || targets.book;
+    sheetUrl = t.url;
+    $('url').value = t.url;
+    $('open-here').href = t.url;
+    $('step3').textContent = t.label;
+    $('copy').textContent = (t === targets.lookup ? '確認・キャンセルのページ' : '予約ページ') + 'のURLをコピー';
+    $('copy').classList.remove('done');
     lastFocus = document.activeElement;
     sheet.hidden = false;
     sheet.offsetWidth; // アニメーションのため
@@ -516,7 +532,7 @@
       var ok = false; try { ok = document.execCommand('copy'); } catch (err) {}
       if (ok) done(); else btn.textContent = '上のURLを長押ししてコピーしてください';
     }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, legacy);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(sheetUrl).then(done, legacy);
     else legacy();
   });
 
