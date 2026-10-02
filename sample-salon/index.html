@@ -31,7 +31,9 @@
     category: 'Private Nail Salon',       // 名前の上に小さく添える英字（空でも可）
     message: '完全予約制のプライベートサロンです。\nご予約はWebから24時間受け付けています。',
 
-    bookingUrl: 'https://script.google.com/macros/s/AKfycbwVfejx-KX9bG1mIrsaNWwXROmX5HeTu54ayRy6kA-B80pMJQQxsZKKU3XlbvTCz4mn0A/exec', // 予約ページのURL（/exec で終わるもの）
+    // 予約画面のURL。このページと同じ場所の reserve フォルダに予約画面を置いたときは './reserve/'。
+    // GASのURL（/exec で終わるもの）を直接書くこともできます。そのときは、インスタの中では外部ブラウザへの案内が出ます。
+    bookingUrl: './reserve/',
     themeColor: '#B07A62',                // スプレッドシートの「テーマカラー」と同じ色にすると、予約画面と色がそろいます
     photo: '',                            // 上のアーチに入れる写真のURL（空なら色の背景に頭文字）
 
@@ -55,7 +57,7 @@
       'キャンセルはご予約の24時間前までにお願いいたします。'
     ],
 
-    // iPhoneのInstagramで開いたとき、このページを自動でSafariなどに開き直します。
+    // iPhoneのInstagramで開いたとき、このページを自動でSafariなどに開き直します（GASのURLを直接使うときだけ必要）。
     // Instagramが公式に用意している仕組みではないため、実機で試してうまく動いたときだけ true にしてください。
     iosAutoEscape: false
   };
@@ -360,7 +362,9 @@
     : /BytedanceWebview|musical_ly|TikTok/i.test(ua) ? 'TikTok'
     : /\bLine\//i.test(ua) ? 'LINE'
     : '';
-  var url = /^https:\/\//.test(S.bookingUrl || '') ? S.bookingUrl : '';
+  var url = /^(https:\/\/|\.{0,2}\/)/.test(S.bookingUrl || '') ? S.bookingUrl : '';
+  // GASの予約画面を直接開くときだけ、アプリ内ブラウザから外に出す（同じサイトの予約画面ならアプリの中でそのまま開ける）
+  var viaGas = /^https:\/\/script\.google\.com\//.test(url);
 
   // ---- 色 ----
   function hexRgb(h) { var n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
@@ -446,7 +450,7 @@
   // ---- 予約ボタンと「ご予約の確認・キャンセル」 ----
   function withParam(u, kv) { return u + (u.indexOf('?') < 0 ? '?' : '&') + kv; }
   // LINEの中では openExternalBrowser=1 を付けると、LINEがふだんのブラウザで開いてくれる
-  function plainHref(u) { return app === 'LINE' ? withParam(u, 'openExternalBrowser=1') : u; }
+  function plainHref(u) { return viaGas && app === 'LINE' ? withParam(u, 'openExternalBrowser=1') : u; }
   function intentHref(u) { return 'intent://' + u.replace(/^https:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end'; }
 
   var targets = {
@@ -468,7 +472,7 @@
   }
 
   function go(e, t) {
-    if (!app || app === 'LINE') return; // ふつうに開く
+    if (!viaGas || !app || app === 'LINE') return; // ふつうに開く
     e.preventDefault();
     if (isAndroid) {
       // Chromeに渡す。開けなかったとき（画面が残ったまま）は案内を出す
@@ -481,7 +485,7 @@
   }
 
   // ---- アプリ内ブラウザの案内 ----
-  var inApp = app && app !== 'LINE';
+  var inApp = viaGas && app && app !== 'LINE';
   var browser = isAndroid ? 'Chrome' : 'Safari';
   if (url && inApp) {
     $('hint').hidden = false;

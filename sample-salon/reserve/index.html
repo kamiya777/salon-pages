@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ご予約</title>
+<!-- GitHub PagesなどGASの外に置くときは、content にウェブアプリのURL（/exec で終わる）を入れる。GASの中で開くときは空のままでよい -->
+<meta name="booking-api" content="https://script.google.com/macros/s/AKfycbwVfejx-KX9bG1mIrsaNWwXROmX5HeTu54ayRy6kA-B80pMJQQxsZKKU3XlbvTCz4mn0A/exec">
+<style>
+  :root {
+    --accent: #B07A62;
+    --accent-weak: rgba(176, 122, 98, .12);
+    --bg: #FAF7F5;
+    --card: #FFFFFF;
+    --text: #2B2522;
+    --muted: #7A6F69;
+    --line: #E8E1DC;
+    --off: #CFC7C2;
+    --danger: #B3261E;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+    font-size: 16px; line-height: 1.6;
+  }
+  button { font: inherit; color: inherit; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 40px; }
+  header { padding: 28px 0 8px; text-align: center; }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: .04em; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; letter-spacing: .08em; }
+  .notice { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin: 12px 0 0; white-space: pre-wrap; }
+
+  .steps { display: flex; gap: 6px; margin: 20px 0 20px; padding: 0; }
+  .steps li { flex: 1; list-style: none; text-align: center; font-size: 12px; color: var(--muted); padding-top: 8px; border-top: 3px solid var(--line); }
+  .steps li.on { color: var(--text); border-color: var(--accent); font-weight: 600; }
+  .steps li.done { border-color: var(--accent); }
+
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  h3 { font-size: 15px; margin: 0 0 10px; }
+  .muted { color: var(--muted); font-size: 14px; }
+
+  .menu-list { display: grid; gap: 10px; }
+  .menu-card { display: block; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .menu-card:hover, .menu-card:focus-visible { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-weak); }
+  .menu-card .row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .menu-card .name { font-weight: 600; }
+  .menu-card .price { font-weight: 600; white-space: nowrap; }
+  .menu-card .meta { color: var(--muted); font-size: 13px; }
+  .menu-card .desc { color: var(--muted); font-size: 13px; margin-top: 4px; white-space: pre-wrap; }
+
+  .summary { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 10px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; }
+  .summary b { display: block; font-size: 15px; }
+  .link { background: none; border: none; color: var(--accent); font-size: 14px; cursor: pointer; padding: 6px; text-decoration: underline; white-space: nowrap; }
+
+  .cal { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .cal-head .title { font-weight: 600; }
+  .nav { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); font-size: 18px; line-height: 1; cursor: pointer; }
+  .nav:disabled { opacity: .3; cursor: default; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .dow { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+  .dow.sun { color: #C0392B; }
+  .dow.sat { color: #2E6DB4; }
+  .day { height: 52px; border: none; border-radius: 10px; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
+  .day .n { font-size: 15px; line-height: 1.3; }
+  .day .m { font-size: 12px; line-height: 1; color: var(--accent); font-weight: 700; min-height: 12px; }
+  .day.off { color: var(--off); cursor: default; }
+  .day.off .m { color: var(--off); font-weight: 400; }
+  .day.today .n { text-decoration: underline; text-underline-offset: 3px; }
+  .day.sel { background: var(--accent); color: #fff; }
+  .day.sel .m { color: #fff; }
+  .day:not(.off):not(.sel):hover { background: var(--accent-weak); }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 8px; text-align: right; }
+
+  .times { margin-top: 18px; }
+  .time-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+  .time { padding: 10px 0; border: 1px solid var(--accent); color: var(--accent); background: var(--card); border-radius: 10px; font-weight: 600; cursor: pointer; }
+  .time:hover, .time:focus-visible { background: var(--accent-weak); outline: none; }
+
+  .field { margin-bottom: 18px; }
+  .lbl { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .req { color: var(--danger); font-size: 12px; margin-left: 6px; }
+  .opt { color: var(--muted); font-size: 12px; margin-left: 6px; font-weight: 400; }
+  input[type=text], input[type=tel], input[type=email], textarea {
+    width: 100%; font: inherit; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); -webkit-appearance: none; appearance: none;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+  input.bad, textarea.bad { border-color: var(--danger); }
+  textarea { min-height: 96px; resize: vertical; }
+  .radios { display: flex; gap: 10px; }
+  .radios label { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 10px; text-align: center; background: var(--card); cursor: pointer; }
+  .radios label.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); font-weight: 600; }
+  .radios input { margin: 0 6px 0 0; accent-color: var(--accent); }
+  .policy { font-size: 13px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; margin-bottom: 10px; }
+  .agree { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
+  .agree input { margin: 3px 0 0; accent-color: var(--accent); width: 18px; height: 18px; flex-shrink: 0; }
+  .err { color: var(--danger); font-size: 13px; margin-top: 4px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); margin-top: 10px; font-weight: 600; }
+  .btn.danger { background: var(--danger); }
+
+  dl.confirm { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 2px 16px; margin: 0 0 16px; }
+  dl.confirm div { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  dl.confirm div:last-child { border-bottom: none; }
+  dl.confirm dt { width: 6em; flex-shrink: 0; color: var(--muted); font-size: 14px; }
+  dl.confirm dd { margin: 0; font-weight: 600; white-space: pre-wrap; word-break: break-word; }
+
+  .done { text-align: center; padding: 8px 0 16px; }
+  .done .icon { width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px; }
+  .alert { background: #FDECEA; color: var(--danger); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 14px; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; margin-bottom: 16px; }
+  .box a { color: var(--accent); font-weight: 600; }
+  #app.nosteps { padding-top: 20px; }
+
+  footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); text-align: center; }
+  footer p { margin: 2px 0; }
+  footer a { color: inherit; }
+  .loading { position: fixed; inset: 0; background: rgba(250, 247, 245, .75); display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .lookup { margin-top: 24px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 12px; text-align: center; font-size: 14px; }
+  .lookup .link { font-weight: 600; }
+  .bk-card .when { font-weight: 600; }
+  .bk-card .what { color: var(--muted); font-size: 13px; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="shop-name">&nbsp;</h1>
+    <p>ONLINE RESERVATION</p>
+  </header>
+  <div id="notice" class="notice" hidden></div>
+  <main id="app" aria-live="polite"></main>
+  <footer id="footer"></footer>
+</div>
+<div id="loading" class="loading"><div class="spinner" role="status" aria-label="読み込み中"></div></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var WD = ['日', '月', '火', '水', '木', '金', '土'];
+  var STEPS = ['メニュー', '日時', 'お客様情報', '確認'];
+  var state = { init: null, menu: null, avail: null, dayMap: {}, month: null, date: null, time: null, form: { visit: '初回' } };
+  var app = document.getElementById('app');
+
+  // ---------- 道具 ----------
+  function el(tag, props) {
+    var n = document.createElement(tag);
+    props = props || {};
+    Object.keys(props).forEach(function (k) {
+      var v = props[k];
+      if (v == null || v === false) return;
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else if (k.indexOf('on') === 0) n.addEventListener(k.slice(2), v);
+      else if (k === 'value' || k === 'checked' || k === 'disabled') n[k] = v;
+      else n.setAttribute(k, v === true ? '' : v);
+    });
+    for (var i = 2; i < arguments.length; i++) append(n, arguments[i]);
+    return n;
+  }
+  function append(n, c) {
+    if (c == null || c === false) return;
+    if (Array.isArray(c)) { c.forEach(function (x) { append(n, x); }); return; }
+    n.appendChild(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  // GASの中で開いたときは google.script.run、GitHub Pagesなどに置いたときはウェブアプリのURLへ送る
+  var IN_GAS = typeof google !== 'undefined' && !!(google.script && google.script.run);
+  var API_URL = (document.querySelector('meta[name="booking-api"]') || {}).content || '';
+  function call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (IN_GAS) {
+      return new Promise(function (resolve, reject) {
+        var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+        r[fn].apply(r, args);
+      });
+    }
+    if (!API_URL) return Promise.reject(new Error('[SETUP] 予約ページの準備中です。'));
+    // 本文は文字列のまま送る（Content-Type が text/plain になる）。GASは送信前の確認（OPTIONS）に答えられないため
+    return fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn: fn, args: args }) })
+      .then(function (r) { return r.json(); })
+      .catch(function () { return null; }) // 通信できない・返事が読めないときは、ふつうの通信エラーとして扱う
+      .then(function (res) {
+        if (res && res.ok) return res.data;
+        throw new Error((res && res.error) || '通信エラーが発生しました。電波の良い場所でもう一度お試しください。');
+      });
+  }
+  function parseErr(e) {
+    var msg = String((e && e.message) || e || '').replace(/^(Error|Exception|ScriptError):\s*/, '');
+    var m = msg.match(/^\[(\w+)\]\s*/);
+    return { code: m ? m[1] : '', text: (m ? msg.slice(m[0].length) : msg) || '通信エラーが発生しました。電波の良い場所でもう一度お試しください。' };
+  }
+  function loading(on) { document.getElementById('loading').hidden = !on; }
+  function pad(n) { return ('0' + n).slice(-2); }
+  function parseKey(k) { var p = k.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function keyOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function fmtDate(k) { var d = parseKey(k); return (d.getMonth() + 1) + '月' + d.getDate() + '日（' + WD[d.getDay()] + '）'; }
+  function fmtDateY(k) { return parseKey(k).getFullYear() + '年' + fmtDate(k); }
+  function addMin(hm, min) { var p = hm.split(':').map(Number), t = p[0] * 60 + p[1] + min; return pad(Math.floor(t / 60)) + ':' + pad(t % 60); }
+  function yen(n) { return n == null || n === '' ? '' : '¥' + Number(n).toLocaleString('ja-JP'); }
+  function hexToRgba(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
+
+  function show(step) {
+    var nodes = Array.prototype.slice.call(arguments, 1);
+    app.innerHTML = '';
+    app.className = step ? '' : 'nosteps';
+    if (step) {
+      append(app, el('ol', { class: 'steps', 'aria-label': '予約の手順' }, STEPS.map(function (s, i) {
+        return el('li', { class: i + 1 === step ? 'on' : (i + 1 < step ? 'done' : ''), 'aria-current': i + 1 === step ? 'step' : null, text: (i + 1) + '. ' + s });
+      })));
+    }
+    append(app, nodes);
+    window.scrollTo(0, 0);
+  }
+  function alertBox(text) { return text ? el('div', { class: 'alert', role: 'alert', text: text }) : null; }
+
+  function applyShop(init) {
+    document.getElementById('shop-name').textContent = init.shopName;
+    if (!IN_GAS) document.title = init.shopName + '｜ご予約'; // GASの中ではdoGetでタイトルを付けている
+    if (/^#[0-9a-fA-F]{6}$/.test(init.themeColor || '')) {
+      document.documentElement.style.setProperty('--accent', init.themeColor);
+      document.documentElement.style.setProperty('--accent-weak', hexToRgba(init.themeColor, 0.12));
+    }
+    var notice = document.getElementById('notice');
+    if (init.notice) { notice.textContent = init.notice; notice.hidden = false; }
+    var f = document.getElementById('footer');
+    f.innerHTML = '';
+    append(f, [
+      el('p', { text: init.shopName }),
+      init.address ? el('p', { text: init.address }) : null,
+      init.phone ? el('p', null, 'TEL ', el('a', { href: 'tel:' + init.phone.replace(/[^\d+]/g, ''), text: init.phone })) : null,
+    ]);
+  }
+
+  function summaryBar(main, sub, onChange) {
+    return el('div', { class: 'summary' },
+      el('div', null, el('b', { text: main }), sub ? el('span', { class: 'muted', text: sub }) : null),
+      onChange ? el('button', { class: 'link', type: 'button', onclick: onChange, text: '変更' }) : null);
+  }
+  function menuSub(m) { return '約' + m.duration + '分' + (m.price != null ? '　' + yen(m.price) : ''); }
+
+  // ---------- 1. メニュー ----------
+  function renderMenu(msg) {
+    var menus = state.init.menus;
+    show(1,
+      alertBox(msg),
+      el('h2', { text: 'メニューを選んでください' }),
+      menus.length
+        ? el('div', { class: 'menu-list' }, menus.map(function (m) {
+            return el('button', { class: 'menu-card', type: 'button', onclick: function () { chooseMenu(m); } },
+              el('div', { class: 'row' }, el('span', { class: 'name', text: m.name }), el('span', { class: 'price', text: yen(m.price) })),
+              el('div', { class: 'meta', text: '所要時間 約' + m.duration + '分' }),
+              m.description ? el('div', { class: 'desc', text: m.description }) : null);
+          }))
+        : el('p', { class: 'muted', text: '現在Webでご予約いただけるメニューはありません。お手数ですがお電話でお問い合わせください。' }),
+      el('div', { class: 'lookup' },
+        el('span', { class: 'muted', text: 'ご予約済みの方は ' }),
+        el('button', { class: 'link', type: 'button', onclick: function () { renderLookup(); }, text: 'ご予約の確認・キャンセル' })));
+  }
+
+  function chooseMenu(m) {
+    if (!state.menu || state.menu.name !== m.name) { state.date = null; state.time = null; }
+    state.menu = m;
+    loadAvailability();
+  }
+
+  function loadAvailability(msg) {
+    loading(true);
+    return call('getAvailability', state.menu.name).then(function (r) {
+      state.menu = r.menu;
+      state.avail = r.days;
+      state.dayMap = {};
+      r.days.forEach(function (d) { state.dayMap[d.date] = d.slots; });
+      if (state.date && !(state.dayMap[state.date] || []).length) state.date = null;
+      if (state.time && state.date && state.dayMap[state.date].indexOf(state.time) < 0) state.time = null;
+      var first = r.days.filter(function (d) { return d.slots.length; })[0];
+      state.month = (state.date || (first ? first.date : r.days[0].date)).slice(0, 7);
+      renderDate(msg);
+    }).catch(function (e) {
+      renderMenu(parseErr(e).text);
+    }).then(function () { loading(false); });
+  }
+
+  // ---------- 2. 日時 ----------
+  function renderDate(msg) {
+    var days = state.avail;
+    var hasAny = days.some(function (d) { return d.slots.length; });
+    var minMonth = days[0].date.slice(0, 7), maxMonth = days[days.length - 1].date.slice(0, 7);
+    var ym = state.month.split('-').map(Number);
+    var first = new Date(ym[0], ym[1] - 1, 1);
+    var daysInMonth = new Date(ym[0], ym[1], 0).getDate();
+    var todayKey = keyOf(new Date());
+
+    function moveMonth(diff) {
+      var d = new Date(ym[0], ym[1] - 1 + diff, 1);
+      state.month = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+      renderDate();
+    }
+
+    var cells = WD.map(function (w, i) { return el('div', { class: 'dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : ''), text: w }); });
+    for (var b = 0; b < first.getDay(); b++) cells.push(el('div'));
+    for (var dnum = 1; dnum <= daysInMonth; dnum++) {
+      (function (dnum) {
+        var key = state.month + '-' + pad(dnum);
+        var slots = state.dayMap[key];
+        var inRange = Array.isArray(slots);
+        var count = inRange ? slots.length : 0;
+        var mark = !inRange ? '' : count === 0 ? '×' : count <= 2 ? '△' : '○';
+        var cls = 'day' + (count ? '' : ' off') + (key === state.date ? ' sel' : '') + (key === todayKey ? ' today' : '');
+        var label = fmtDate(key) + (inRange ? (count ? ' 空きあり' : ' 予約できません') : '');
+        cells.push(el('button', {
+          class: cls, type: 'button', disabled: !count, 'aria-label': label, 'aria-pressed': key === state.date ? 'true' : null,
+          onclick: function () {
+            state.date = key; state.time = null; renderDate();
+            var t = document.getElementById('times');
+            if (t && t.scrollIntoView) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, el('span', { class: 'n', text: dnum }), el('span', { class: 'm', text: mark })));
+      })(dnum);
+    }
+
+    var timesSection;
+    if (state.date) {
+      var slots = state.dayMap[state.date] || [];
+      timesSection = el('section', { class: 'times', id: 'times' },
+        el('h3', { text: fmtDate(state.date) + ' の空き時間' }),
+        el('div', { class: 'time-grid' }, slots.map(function (t) {
+          return el('button', { class: 'time', type: 'button', 'aria-label': t + 'から', onclick: function () { state.time = t; renderForm(); }, text: t });
+        })));
+    } else {
+      timesSection = el('p', { class: 'muted times', id: 'times', text: hasAny ? '日付を選ぶと、空いている時間が表示されます。' : '現在ご予約いただける日時がありません。お手数ですがお電話でお問い合わせください。' });
+    }
+
+    show(2,
+      alertBox(msg),
+      summaryBar(state.menu.name, menuSub(state.menu), function () { renderMenu(); }),
+      el('h2', { text: 'ご希望の日時を選んでください' }),
+      el('div', { class: 'cal' },
+        el('div', { class: 'cal-head' },
+          el('button', { class: 'nav', type: 'button', 'aria-label': '前の月', disabled: state.month <= minMonth, onclick: function () { moveMonth(-1); }, text: '‹' }),
+          el('span', { class: 'title', text: ym[0] + '年' + ym[1] + '月' }),
+          el('button', { class: 'nav', type: 'button', 'aria-label': '次の月', disabled: state.month >= maxMonth, onclick: function () { moveMonth(1); }, text: '›' })),
+        el('div', { class: 'grid' }, cells),
+        el('div', { class: 'legend', text: '○ 空きあり　△ 残りわずか　× 満席・休業日' })),
+      timesSection);
+  }
+
+  // ---------- 3. お客様情報 ----------
+  function renderForm() {
+    var f = state.form;
+    var errs = {};
+
+    function input(name, type, label, attrs, required, hint) {
+      var box = el('div', { class: 'field' });
+      var id = 'f-' + name;
+      var props = Object.assign({ id: id, name: name, type: type, value: f[name] || '' }, attrs || {});
+      var node = type === 'textarea' ? el('textarea', Object.assign({}, props, { type: null })) : el('input', props);
+      errs[name] = el('div', { class: 'err', id: id + '-err', hidden: true });
+      node.setAttribute('aria-describedby', id + '-err');
+      append(box, [
+        el('label', { class: 'lbl', for: id }, label, required ? el('span', { class: 'req', text: '必須' }) : el('span', { class: 'opt', text: '任意' })),
+        node, hint ? el('div', { class: 'hint', text: hint }) : null, errs[name]]);
+      return box;
+    }
+
+    var visitBox = el('div', { class: 'radios', role: 'radiogroup', 'aria-label': 'ご来店' });
+    ['初回', '再来'].forEach(function (v) {
+      var lab = el('label', { class: f.visit === v ? 'on' : '' },
+        el('input', { type: 'radio', name: 'visit', value: v, checked: f.visit === v, onchange: function () {
+          Array.prototype.forEach.call(visitBox.querySelectorAll('label'), function (l) { l.className = ''; });
+          lab.className = 'on';
+        } }), v === '初回' ? 'はじめて' : '2回目以降');
+      visitBox.appendChild(lab);
+    });
+
+    var agreeErr = el('div', { class: 'err', hidden: true });
+    var form = el('form', { novalidate: true, onsubmit: function (e) { e.preventDefault(); next(); } },
+      input('name', 'text', 'お名前', { autocomplete: 'name', maxlength: '50', placeholder: '例：山田 花子' }, true),
+      input('phone', 'tel', '電話番号', { autocomplete: 'tel', inputmode: 'tel', maxlength: '20', placeholder: '例：090-1234-5678' }, true),
+      input('email', 'email', 'メールアドレス', { autocomplete: 'email', inputmode: 'email', maxlength: '254', placeholder: '例：hanako@example.com' }, true, '予約確認・前日のお知らせをお送りします'),
+      el('div', { class: 'field' }, el('span', { class: 'lbl' }, 'ご来店', el('span', { class: 'req', text: '必須' })), visitBox),
+      input('notes', 'textarea', 'ご要望・ご相談', { maxlength: '500', placeholder: state.init.notesPlaceholder || '仕上がりのイメージ、気になること、アレルギーなど' }, false),
+      el('div', { class: 'hp', 'aria-hidden': 'true' }, el('label', null, 'Website', el('input', { type: 'text', name: 'website', tabindex: '-1', autocomplete: 'off' }))),
+      el('div', { class: 'field' },
+        el('div', { class: 'policy', text: state.init.privacyPolicy || '' }),
+        el('label', { class: 'agree' }, el('input', { type: 'checkbox', name: 'agree', checked: !!f.agree }), 'プライバシーポリシーに同意します'),
+        agreeErr),
+      el('button', { class: 'btn', type: 'submit', text: '入力内容を確認する' }),
+      el('button', { class: 'btn ghost', type: 'button', onclick: function () { renderDate(); }, text: '日時を選び直す' }));
+
+    function fld(n) { return form.querySelector('[name="' + n + '"]'); }
+
+    function next() {
+      var v = {
+        name: fld('name').value.replace(/\s+/g, ' ').trim(),
+        phone: fld('phone').value.trim(),
+        email: fld('email').value.trim(),
+        notes: fld('notes').value.trim(),
+        visit: form.querySelector('input[name=visit]:checked').value,
+        agree: fld('agree').checked,
+        website: fld('website').value,
+      };
+      var digits = v.phone.normalize('NFKC').replace(/\D/g, '');
+      var email = v.email.normalize('NFKC');
+      var problems = {
+        name: v.name ? '' : 'お名前を入力してください。',
+        phone: /^0\d{9,10}$/.test(digits) ? '' : '電話番号を正しく入力してください（例：090-1234-5678）。',
+        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'メールアドレスを正しく入力してください。',
+      };
+      var firstBad = null;
+      Object.keys(problems).forEach(function (k) {
+        var node = fld(k);
+        errs[k].textContent = problems[k];
+        errs[k].hidden = !problems[k];
+        node.classList.toggle('bad', !!problems[k]);
+        node.setAttribute('aria-invalid', problems[k] ? 'true' : 'false');
+        if (problems[k] && !firstBad) firstBad = node;
+      });
+      agreeErr.textContent = v.agree ? '' : 'ご予約にはプライバシーポリシーへの同意が必要です。';
+      agreeErr.hidden = v.agree;
+      if (firstBad) { firstBad.focus(); return; }
+      if (!v.agree) { fld('agree').focus(); return; }
+      v.email = email;
+      state.form = v;
+      renderConfirm();
+    }
+
+    show(3,
+      summaryBar(fmtDate(state.date) + ' ' + state.time + '〜', state.menu.name + '（約' + state.menu.duration + '分）', function () { renderDate(); }),
+      el('h2', { text: 'お客様情報を入力してください' }),
+      form);
+  }
+
+  // ---------- 4. 確認 ----------
+  function details(b) {
+    var rows = [
+      ['日時', fmtDateY(b.date) + '\n' + b.start + '〜' + b.end],
+      ['メニュー', b.menu],
+      ['料金', yen(b.price)],
+      ['お名前', b.name + ' 様'],
+    ];
+    if (b.phone) rows.push(['電話番号', b.phone]);
+    if (b.email) rows.push(['メール', b.email]);
+    if (b.visit) rows.push(['ご来店', b.visit === '再来' ? '2回目以降' : 'はじめて']);
+    if (b.notes) rows.push(['ご要望', b.notes]);
+    return el('dl', { class: 'confirm' }, rows.filter(function (r) { return r[1]; }).map(function (r) {
+      return el('div', null, el('dt', { text: r[0] }), el('dd', { text: r[1] }));
+    }));
+  }
+
+  function renderConfirm(msg) {
+    var f = state.form;
+    var submitBtn = el('button', { class: 'btn', type: 'button', text: 'この内容で予約する', onclick: function () { submit(submitBtn); } });
+    show(4,
+      alertBox(msg),
+      el('h2', { text: 'ご予約内容の確認' }),
+      details({ date: state.date, start: state.time, end: addMin(state.time, state.menu.duration), menu: state.menu.name, price: state.menu.price, name: f.name, phone: f.phone, email: f.email, visit: f.visit, notes: f.notes }),
+      state.init.cancelPolicy ? el('div', { class: 'policy', text: 'キャンセルについて\n' + state.init.cancelPolicy }) : null,
+      submitBtn,
+      el('button', { class: 'btn ghost', type: 'button', onclick: function () { renderForm(); }, text: '入力内容を修正する' }));
+  }
+
+  function submit(btn) {
+    btn.disabled = true;
+    loading(true);
+    var f = state.form;
+    call('createBooking', {
+      menuName: state.menu.name, date: state.date, time: state.time,
+      name: f.name, phone: f.phone, email: f.email, visit: f.visit, notes: f.notes, agree: f.agree, website: f.website,
+    }).then(function (b) {
+      loading(false);
+      renderDone(b);
+    }).catch(function (e) {
+      var err = parseErr(e);
+      loading(false);
+      if (err.code === 'SLOT') { state.time = null; loadAvailability(err.text); }
+      else if (err.code === 'MENU') { reloadInit(err.text); }
+      else { renderConfirm(err.text); }
+    });
+  }
+
+  function renderDone(b) {
+    show(0,
+      el('div', { class: 'done' },
+        el('div', { class: 'icon', 'aria-hidden': 'true', text: '✓' }),
+        el('h2', { text: 'ご予約が確定しました' }),
+        el('p', { class: 'muted', text: 'ご来店を心よりお待ちしております。' })),
+      details(b),
+      el('div', { class: 'box' },
+        el('p', { style: 'margin:0 0 6px', text: '確認メールを ' + b.email + ' にお送りしました。' }),
+        el('p', { class: 'muted', style: 'margin:0', text: 'メールが届かない場合は迷惑メールフォルダをご確認いただくか、お店までご連絡ください。ご予約の確認・キャンセルは、メール内のリンクか、予約ページの「ご予約の確認・キャンセル」から行えます（ご予約の' + b.cancelHours + '時間前まで）。' })),
+      topButton());
+  }
+
+  /** 予約ページの最初の画面（メニュー選択）に戻るボタン */
+  function topButton(label) {
+    return el('button', { class: 'btn ghost', type: 'button', text: label || '予約ページのトップへ', onclick: goTop });
+  }
+  function goTop() {
+    state.menu = null; state.avail = null; state.date = null; state.time = null; // お名前などの入力内容は次の予約のために残す
+    renderMenu();
+  }
+
+  // ---------- キャンセル ----------
+  function startCancel(token) {
+    loading(true);
+    call('getBookingForCancel', token).then(function (b) {
+      renderCancel(token, b, false);
+    }).catch(function (e) {
+      renderFatal(parseErr(e).text);
+    }).then(function () { loading(false); });
+  }
+
+  function renderCancel(token, b, confirming, msg, back) {
+    var action;
+    if (b.status !== '予約済') {
+      action = el('div', { class: 'box', text: 'このご予約はキャンセル済みです。' });
+    } else if (b.isPast) {
+      action = el('div', { class: 'box', text: 'このご予約の日時は過ぎています。' });
+    } else if (!b.canCancel) {
+      action = el('div', { class: 'box' },
+        el('p', { style: 'margin:0', text: 'キャンセル期限（ご予約の' + b.cancelHours + '時間前）を過ぎているため、Webからはキャンセルできません。お手数ですがお店までお電話ください。' }),
+        state.init.phone ? el('p', { style: 'margin:8px 0 0' }, el('a', { href: 'tel:' + state.init.phone.replace(/[^\d+]/g, ''), text: '電話する：' + state.init.phone })) : null);
+    } else if (!confirming) {
+      action = el('button', { class: 'btn danger', type: 'button', text: 'このご予約をキャンセルする', onclick: function () { renderCancel(token, b, true, null, back); } });
+    } else {
+      var yes = el('button', { class: 'btn danger', type: 'button', text: 'キャンセルを確定する', onclick: function () {
+        yes.disabled = true; loading(true);
+        call('cancelBooking', token).then(function (r) {
+          loading(false);
+          renderCanceled(r);
+        }).catch(function (e) {
+          loading(false);
+          var err = parseErr(e);
+          call('getBookingForCancel', token).then(function (fresh) { renderCancel(token, fresh, false, err.text, back); }).catch(function () { renderFatal(err.text); });
+        });
+      } });
+      action = el('div', null,
+        el('p', { style: 'font-weight:600;text-align:center', text: '本当にキャンセルしますか？' }),
+        yes,
+        el('button', { class: 'btn ghost', type: 'button', text: 'やめる', onclick: function () { renderCancel(token, b, false, null, back); } }));
+    }
+    show(0, alertBox(msg), el('h2', { text: 'ご予約の確認・キャンセル' }), details(b), action,
+      confirming ? null : el('button', { class: 'btn ghost', type: 'button', text: back ? '予約一覧に戻る' : '予約ページのトップへ', onclick: function () { if (back) back(); else goTop(); } }));
+  }
+
+  // ---------- 予約の確認（メール＋電話番号で呼び出し） ----------
+  function renderLookup(msg) {
+    var f = state.lookup || {};
+    var emailIn = el('input', { id: 'l-email', type: 'email', inputmode: 'email', autocomplete: 'email', maxlength: '254', placeholder: '例：hanako@example.com', value: f.email || '' });
+    var phoneIn = el('input', { id: 'l-phone', type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20', placeholder: '例：090-1234-5678', value: f.phone || '' });
+    var errBox = el('div', { class: 'err', hidden: true });
+    var btn = el('button', { class: 'btn', type: 'submit', text: 'ご予約を探す' });
+    [emailIn, phoneIn].forEach(function (n) { n.addEventListener('input', function () { errBox.hidden = true; }); });
+    var form = el('form', { novalidate: true, onsubmit: function (e) {
+        e.preventDefault();
+        var email = emailIn.value.trim().normalize('NFKC'), phone = phoneIn.value.trim();
+        var digits = phone.normalize('NFKC').replace(/\D/g, '');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^0\d{9,10}$/.test(digits)) {
+          errBox.textContent = 'ご予約時のメールアドレスと電話番号を正しく入力してください。';
+          errBox.hidden = false;
+          return;
+        }
+        state.lookup = { email: email, phone: phone };
+        btn.disabled = true; loading(true);
+        call('findMyBookings', { email: email, phone: phone }).then(function (list) {
+          loading(false);
+          renderMyBookings(list);
+        }).catch(function (e2) {
+          loading(false);
+          renderLookup(parseErr(e2).text);
+        });
+      } },
+      el('div', { class: 'field' }, el('label', { class: 'lbl', for: 'l-email', text: 'メールアドレス' }), emailIn),
+      el('div', { class: 'field' }, el('label', { class: 'lbl', for: 'l-phone', text: '電話番号' }), phoneIn, errBox),
+      btn,
+      topButton());
+    show(0,
+      alertBox(msg),
+      el('h2', { text: 'ご予約の確認・キャンセル' }),
+      el('p', { class: 'muted', text: 'ご予約のときに入力したメールアドレスと電話番号を入れてください。これからのご予約が表示されます。' }),
+      form);
+  }
+
+  function renderMyBookings(list) {
+    function again() {
+      loading(true);
+      call('findMyBookings', state.lookup).then(function (l) { loading(false); renderMyBookings(l); })
+        .catch(function (e) { loading(false); renderLookup(parseErr(e).text); });
+    }
+    show(0,
+      el('h2', { text: 'ご予約一覧' }),
+      list.length
+        ? el('div', { class: 'menu-list' }, list.map(function (b) {
+            return el('button', { class: 'menu-card bk-card', type: 'button', onclick: function () { renderCancel(b.id, b, false, null, again); } },
+              el('div', { class: 'row' }, el('span', { class: 'when', text: fmtDateY(b.date) + ' ' + b.start + '〜' + b.end }), el('span', { class: 'link', text: '詳細' })),
+              el('div', { class: 'what', text: b.menu + (b.price != null ? '　' + yen(b.price) : '') }));
+          }))
+        : el('div', { class: 'box', text: 'これからのご予約は見つかりませんでした。ご予約のときのメールアドレスと電話番号をご確認ください。' }),
+      el('button', { class: 'btn ghost', type: 'button', text: '入力し直す', onclick: function () { renderLookup(); } }),
+      topButton());
+  }
+
+  function renderCanceled(b) {
+    show(0,
+      el('div', { class: 'done' },
+        el('div', { class: 'icon', 'aria-hidden': 'true', text: '✓' }),
+        el('h2', { text: 'キャンセルしました' }),
+        el('p', { class: 'muted', text: (b.mailed === false ? '' : 'キャンセルの確認メールをお送りしました。') + 'またのご予約をお待ちしております。' })),
+      details(b),
+      topButton('新しく予約する'));
+  }
+
+  function renderFatal(text) {
+    show(0, el('div', { class: 'box', text: text }), state.init ? topButton() : null);
+  }
+
+  function reloadInit(msg) {
+    loading(true);
+    call('getInitData').then(function (init) {
+      state.init = init; state.menu = null; state.date = null; state.time = null;
+      applyShop(init);
+      renderMenu(msg);
+    }).catch(function (e) { renderFatal(parseErr(e).text); }).then(function () { loading(false); });
+  }
+
+  // ---------- 起動 ----------
+  function boot(params) {
+    call('getInitData').then(function (init) {
+      state.init = init;
+      applyShop(init);
+      if (params.cancel) { startCancel(params.cancel); return; }
+      if (params.view === 'lookup') { renderLookup(); loading(false); return; } // 入口ページの「ご予約の確認・キャンセル」から
+      renderMenu();
+      loading(false);
+    }).catch(function (e) {
+      var err = parseErr(e);
+      loading(false);
+      renderFatal(err.code === 'SETUP' ? 'ただいま予約ページの準備中です。' : err.text);
+    });
+  }
+
+  if (IN_GAS && google.script.url && google.script.url.getLocation) {
+    google.script.url.getLocation(function (loc) { boot((loc && loc.parameter) || {}); });
+  } else if (!IN_GAS) {
+    var params = {};
+    new URLSearchParams(location.search).forEach(function (v, k) { params[k] = v; });
+    boot(params);
+  } else {
+    boot({});
+  }
+})();
+</script>
+</body>
+</html>
