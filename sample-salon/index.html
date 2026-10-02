@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  ============================================================
+  お店ごとに書き換えるところ（1/2）
+  検索結果や、LINEなどでこのページのURLを送ったときに表示される文字です。
+  ============================================================
+-->
+<title>SAMPLE SALON｜Web予約</title>
+<meta name="description" content="SAMPLE SALONのWeb予約ページです。24時間いつでもご予約いただけます。">
+<meta property="og:title" content="SAMPLE SALON｜Web予約">
+<meta property="og:description" content="24時間いつでもご予約いただけます。">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#FAF7F5">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500&family=Shippori+Mincho:wght@500&display=swap">
+
+<script>
+  /* ============================================================
+     お店ごとに書き換えるところ（2/2）
+     空（''）にした項目は、ページに表示されません。
+     ============================================================ */
+  var SALON = {
+    name: 'SAMPLE SALON',                 // お店の名前
+    nameKana: 'サンプルサロン',             // 読み方（空でも可）
+    category: 'Private Nail Salon',       // 名前の上に小さく添える英字（空でも可）
+    message: '完全予約制のプライベートサロンです。\nご予約はWebから24時間受け付けています。',
+
+    bookingUrl: 'https://script.google.com/macros/s/AKfycbyeqfhHoyEK1fFyG5v41tTEa9FdhWD6Fak9tBjADkJrp52JjzEhU1tC95_htbn3FiKT1A/exec', // 予約ページのURL（/exec で終わるもの）
+    themeColor: '#B07A62',                // スプレッドシートの「テーマカラー」と同じ色にすると、予約画面と色がそろいます
+    photo: '',                            // 上のアーチに入れる写真のURL（空なら色の背景に頭文字）
+
+    hours: '10:00〜19:00（最終受付 18:00）',
+    holidays: '火曜日',
+    address: '東京都渋谷区〇〇 1-2-3 〇〇ビル 4F',
+    access: '〇〇駅 東口から徒歩5分',
+    mapUrl: '',                           // GoogleマップのURL（空なら住所から自動で作ります）
+    phone: '',                            // 例：'03-1234-5678'
+    instagram: 'sample_salon',            // Instagramのユーザーネーム（@は不要）
+    lineUrl: '',                          // 公式LINEの友だち追加URL
+
+    menus: [                              // 空の配列 [] にすると、メニューの欄を出しません
+      { name: 'ジェルネイル（ワンカラー）', time: '60分', price: '6,600円' },
+      { name: 'ハンド＋ジェル', time: '90分', price: '8,800円' },
+      { name: 'フットケア', time: '90分', price: '7,700円' }
+    ],
+    menuNote: 'メニューの詳しい内容と空き状況は、予約画面でご確認いただけます。',
+    notes: [
+      'ご予約の確認・キャンセルは、予約確認メールのリンクか、予約画面の「ご予約の確認・キャンセル」からできます。',
+      'キャンセルはご予約の24時間前までにお願いいたします。'
+    ],
+
+    // iPhoneのInstagramで開いたとき、このページを自動でSafariなどに開き直します。
+    // Instagramが公式に用意している仕組みではないため、実機で試してうまく動いたときだけ true にしてください。
+    iosAutoEscape: false
+  };
+</script>
+<script>
+  // iPhoneのInstagramアプリ内ブラウザから、外部ブラウザへ開き直す（iosAutoEscape が true のときだけ）
+  (function () {
+    var ua = navigator.userAgent || '';
+    if (!SALON.iosAutoEscape || !/iPhone|iPad|iPod/.test(ua) || !/Instagram/.test(ua)) return;
+    document.write('<meta http-equiv="refresh" content="0;url=instagram://extbrowser/?url=' + encodeURIComponent(location.href) + '">');
+  })();
+</script>
+
+<style>
+  /* Layout: インスタのプロフィールから開く1カラムの名刺ページ。アーチの写真、お店の名前、予約ボタンを最初の画面に収める */
+  :root {
+    --accent: #B07A62;           /* SALON.themeColor で上書き */
+    --accent-weak: rgba(176, 122, 98, .10);
+    --accent-soft: #EAD9D1;
+    --bg: #FAF7F5;               /* 予約画面と同じ地の色 */
+    --card: #FFFFFF;
+    --ink: #2B2522;
+    --muted: #7A6F69;
+    --line: #E8E1DC;
+    --scrim: rgba(43, 37, 34, .45);
+
+    --font-en: "Cormorant Garamond", "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --font-mincho: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.8; letter-spacing: .03em;
+  }
+  img { max-width: 100%; }
+  a { color: inherit; }
+  p, ul, dl, dd, h1, h2 { margin: 0; }
+  ul { padding: 0; list-style: none; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+
+  .page {
+    max-width: 460px; margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: calc(28px + env(safe-area-inset-top, 0px)) calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* アーチと名前 */
+  .cover {
+    position: relative; width: min(58%, 236px); aspect-ratio: 5 / 6; margin: 0 auto;
+    border-radius: 999px 999px 0 0; overflow: hidden;
+    background: linear-gradient(180deg, var(--accent-soft), var(--bg));
+  }
+  .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .cover::after { content: ""; position: absolute; inset: 9px; border: 1px solid rgba(255, 255, 255, .75); border-bottom: 0; border-radius: inherit; pointer-events: none; }
+  .mono {
+    position: absolute; inset: 0; display: grid; place-items: center; padding-top: 18%;
+    font-family: var(--font-en); font-style: italic; font-weight: 400; font-size: 108px; line-height: 1; color: #FFFFFF;
+  }
+  .who { display: grid; justify-items: center; gap: 6px; text-align: center; margin-top: 22px; }
+  .cat { font-family: var(--font-en); font-style: italic; font-size: 16px; color: var(--accent); letter-spacing: .06em; line-height: 1.2; display: flex; align-items: center; gap: 10px; }
+  .cat::before, .cat::after { content: ""; width: 20px; height: 1px; background: currentColor; opacity: .6; }
+  .name { font-family: var(--font-en); font-weight: 500; font-size: 32px; line-height: 1.25; letter-spacing: .14em; text-wrap: balance; }
+  .kana { font-size: 11.5px; color: var(--muted); letter-spacing: .24em; }
+  .msg { margin-top: 14px; text-align: center; color: var(--muted); font-size: 13.5px; white-space: pre-line; text-wrap: pretty; }
+
+  /* 予約ボタン */
+  .cta { margin-top: 26px; display: grid; gap: 10px; }
+  .book {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    min-height: 62px; padding: 12px 24px; border: 0; border-radius: 999px; width: 100%;
+    background: var(--accent); color: #FFFFFF; font-weight: 700; font-size: 17px; letter-spacing: .14em; text-decoration: none; cursor: pointer;
+    box-shadow: 0 16px 30px -16px var(--accent);
+    -webkit-tap-highlight-color: transparent; transition: transform .15s ease;
+  }
+  .book:active { transform: scale(.98); }
+  .book svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .book .arw { width: 16px; height: 16px; margin-left: 2px; }
+  .book[aria-disabled="true"] { background: var(--line); color: var(--muted); box-shadow: none; cursor: default; letter-spacing: .06em; font-size: 15px; }
+  .book[aria-disabled="true"]::after { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .book::after {
+      content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%;
+      background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .38), transparent);
+      transform: skewX(-18deg); animation: shine 4.8s ease-in-out 1.2s infinite;
+    }
+    @keyframes shine { 0% { left: -40%; } 22%, 100% { left: 120%; } }
+  }
+  .cta-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+  .cta-sub span { display: inline-flex; align-items: center; gap: 6px; }
+  .cta-sub span::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+
+  /* アプリ内ブラウザで開いているときの案内 */
+  .hint { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; margin-top: 16px; padding: 12px 16px; border-radius: 16px; background: var(--accent-weak); font-size: 12.5px; line-height: 1.7; }
+  .hint svg { width: 18px; height: 18px; margin-top: 2px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; }
+  .hint b { display: block; font-size: 13px; }
+
+  /* そのほかのリンク */
+  .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+  .links a {
+    display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 12px; min-width: 0;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--card); text-decoration: none; font-size: 13.5px;
+  }
+  .links a:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .links svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .links span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* 各欄 */
+  .sec { margin-top: 52px; }
+  .sec-h { display: grid; justify-items: center; gap: 4px; margin-bottom: 16px; text-align: center; }
+  .sec-h .en { font-family: var(--font-en); font-style: italic; font-weight: 400; font-size: 26px; line-height: 1.1; color: var(--accent); }
+  .sec-h h2 { font-size: 11.5px; font-weight: 400; letter-spacing: .24em; color: var(--muted); }
+  .panel { background: var(--card); border-radius: 22px; padding: 4px 20px; }
+  .menu li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+  .menu li:last-child { border-bottom: 0; }
+  .menu .mn { font-weight: 600; font-size: 14.5px; line-height: 1.6; }
+  .menu .mt { font-size: 12.5px; color: var(--muted); }
+  .menu .mp { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .fine { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: center; }
+
+  .info div { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .info div:last-child { border-bottom: 0; }
+  .info dt { color: var(--muted); font-size: 13px; }
+  .info dd { min-width: 0; overflow-wrap: anywhere; }
+  .info dd small { display: block; color: var(--muted); font-size: 12.5px; }
+  .info dd a { color: var(--accent); font-size: 13px; }
+
+  .notes { display: grid; gap: 10px; padding-block: 16px; font-size: 13px; color: var(--muted); }
+  .notes li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 8px; }
+  .notes li::before { content: ""; width: 5px; height: 5px; margin-top: 9px; border-radius: 50%; background: var(--accent); opacity: .7; }
+
+  footer { margin-top: 56px; text-align: center; font-family: var(--font-en); font-size: 13px; letter-spacing: .1em; color: var(--muted); }
+
+  /* 下に固定の予約ボタン（最初のボタンが見えなくなったら出す） */
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(250, 247, 245, .92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line);
+    transform: translateY(110%); transition: transform .3s ease;
+  }
+  .bar.show { transform: none; }
+  .bar .book { max-width: 420px; margin-inline: auto; min-height: 52px; font-size: 16px; }
+
+  /* 外部ブラウザで開く方法の案内 */
+  .sheet-wrap { position: fixed; inset: 0; z-index: 40; }
+  .scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s ease; }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; max-width: 520px; margin-inline: auto; max-height: 92%; overflow-y: auto;
+    background: var(--card); border-radius: 26px 26px 0 0;
+    padding: 10px 22px calc(22px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(100%); transition: transform .34s cubic-bezier(.2, .8, .2, 1);
+  }
+  .sheet-wrap.open .scrim { opacity: 1; }
+  .sheet-wrap.open .sheet { transform: none; }
+  .grab { width: 40px; height: 4px; border-radius: 4px; background: var(--line); margin: 0 auto 18px; }
+  .sheet h2 { font-family: var(--font-mincho); font-weight: 500; font-size: 19px; line-height: 1.6; letter-spacing: .06em; text-align: center; }
+  .sheet .lead { margin-top: 8px; font-size: 13px; color: var(--muted); text-align: center; }
+  .steps { display: grid; gap: 12px; margin: 20px 0 0; padding: 0; list-style: none; counter-reset: st; }
+  .steps li { counter-increment: st; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px; border-radius: 16px; background: var(--bg); font-size: 14px; }
+  .steps li::before {
+    content: counter(st); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--accent); color: #FFFFFF; font-family: var(--font-en); font-size: 15px; font-weight: 500; line-height: 1;
+  }
+  .steps li > div { display: grid; gap: 10px; min-width: 0; }
+  .steps b { font-weight: 600; }
+
+  /* アプリ内ブラウザの上の帯の見本 */
+  .m-bar { display: grid; grid-template-columns: 22px minmax(0, 1fr) 30px; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+  .m-bar .x { font-size: 16px; line-height: 1; }
+  .m-bar .u { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+  .m-bar .dots { position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); font-size: 16px; font-weight: 700; letter-spacing: 0; box-shadow: 0 0 0 2px var(--accent); }
+  @media (prefers-reduced-motion: no-preference) {
+    .m-bar .dots::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; box-shadow: 0 0 0 2px var(--accent); animation: ring 1.6s ease-out infinite; }
+    @keyframes ring { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(1.6); } }
+  }
+  .m-menu { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--card); border: 2px solid var(--accent); font-size: 13px; font-weight: 600; }
+  .m-menu svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  .copy { display: grid; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .copy p { font-size: 12.5px; color: var(--muted); text-align: center; }
+  .url { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: 12px/1.4 ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  .btn2 { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 999px; border: 1px solid var(--accent); background: var(--card); color: var(--accent); font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; }
+  .btn2.done { background: var(--accent); color: #FFFFFF; }
+  .sheet-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; font-size: 13px; }
+  .sheet-foot a { color: var(--muted); }
+  .sheet-foot button { border: 0; background: none; padding: 10px 4px; color: var(--ink); font-weight: 600; cursor: pointer; }
+
+  @media (min-width: 600px) {
+    body { background: linear-gradient(180deg, var(--accent-weak), var(--bg) 40%); }
+    .page { padding-block: 56px 120px; }
+  }
+</style>
+</head>
+<body>
+
+<main class="page">
+  <div class="cover" id="cover"></div>
+
+  <div class="who">
+    <p class="cat" id="cat"></p>
+    <h1 class="name" id="name"></h1>
+    <p class="kana" id="kana"></p>
+  </div>
+  <p class="msg" id="msg"></p>
+
+  <div class="cta" id="cta">
+    <a class="book" id="book" href="#">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+      <span id="book-label">Web予約する</span>
+      <svg class="arw" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg>
+    </a>
+    <p class="cta-sub"><span>24時間受付</span><span>空き状況がすぐわかります</span></p>
+  </div>
+
+  <div class="hint" id="hint" hidden>
+    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 9v5M10 6.2v.1"/></svg>
+    <p><b id="hint-title"></b><span id="hint-text"></span></p>
+  </div>
+
+  <nav class="links" id="links" aria-label="お店へのご連絡"></nav>
+
+  <section class="sec" id="menu-sec" aria-labelledby="menu-h" hidden>
+    <div class="sec-h"><p class="en" aria-hidden="true">Menu</p><h2 id="menu-h">メニュー</h2></div>
+    <ul class="panel menu" id="menu"></ul>
+    <p class="fine" id="menu-note"></p>
+  </section>
+
+  <section class="sec" id="info-sec" aria-labelledby="info-h" hidden>
+    <div class="sec-h"><p class="en" aria-hidden="true">Information</p><h2 id="info-h">店舗情報</h2></div>
+    <dl class="panel info" id="info"></dl>
+  </section>
+
+  <section class="sec" id="notes-sec" aria-labelledby="notes-h" hidden>
+    <div class="sec-h"><p class="en" aria-hidden="true">Notes</p><h2 id="notes-h">ご予約について</h2></div>
+    <ul class="panel notes" id="notes"></ul>
+  </section>
+
+  <footer id="foot"></footer>
+</main>
+
+<div class="bar" id="bar" aria-hidden="true">
+  <a class="book" id="bar-book" href="#" tabindex="-1">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+    <span>Web予約する</span>
+  </a>
+</div>
+
+<div class="sheet-wrap" id="sheet" hidden>
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-h">
+    <div class="grab" aria-hidden="true"></div>
+    <h2 id="sheet-h">ブラウザで開いてご予約ください</h2>
+    <p class="lead" id="sheet-lead"></p>
+    <ol class="steps">
+      <li>
+        <div>
+          <span>画面の右上の <b id="dots-label">「…」</b> をタップ</span>
+          <div class="m-bar" aria-hidden="true"><span class="x">×</span><span class="u" id="m-host"></span><span class="dots" id="m-dots">…</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <span id="step2"><b>「外部ブラウザで開く」</b>を選ぶ</span>
+          <div class="m-menu" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M11 3h6v6M17 3l-8 8M14 12v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg><span>外部ブラウザで開く</span></div>
+        </div>
+      </li>
+      <li><div><span>開いたページで、もう一度 <b>「Web予約する」</b> を押す</span></div></li>
+    </ol>
+    <div class="copy">
+      <p id="copy-lead">うまくいかないときは、予約ページのURLをコピーして、<span id="browser-name">Safari</span>のアドレス欄に貼り付けてください。</p>
+      <input class="url" id="url" type="text" readonly aria-label="予約ページのURL">
+      <button class="btn2" id="copy" type="button">予約ページのURLをコピー</button>
+    </div>
+    <div class="sheet-foot">
+      <a id="open-here" href="#">このまま開いてみる</a>
+      <button id="close" type="button">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var S = window.SALON || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/.test(ua);
+  // どのアプリの中で開いているか（ふつうのブラウザなら空）
+  var app = /Instagram/.test(ua) ? 'Instagram'
+    : /Barcelona/.test(ua) ? 'Threads'
+    : /FBAN|FBAV|FB_IAB|FB4A/.test(ua) ? 'Facebook'
+    : /BytedanceWebview|musical_ly|TikTok/i.test(ua) ? 'TikTok'
+    : /\bLine\//i.test(ua) ? 'LINE'
+    : '';
+  var url = /^https:\/\//.test(S.bookingUrl || '') ? S.bookingUrl : '';
+
+  // ---- 色 ----
+  function hexRgb(h) { var n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  if (/^#[0-9a-f]{6}$/i.test(S.themeColor || '')) {
+    var c = hexRgb(S.themeColor), bg = [250, 247, 245], root = document.documentElement.style;
+    root.setProperty('--accent', S.themeColor);
+    root.setProperty('--accent-weak', 'rgba(' + c.join(',') + ',.10)');
+    root.setProperty('--accent-soft', 'rgb(' + c.map(function (v, i) { return Math.round(v * .3 + bg[i] * .7); }).join(',') + ')');
+  }
+
+  // ---- 中身 ----
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function fill(id, text) { var e = $(id); if (text) e.textContent = text; else e.hidden = true; }
+
+  document.title = (S.name || 'ご予約') + '｜Web予約';
+  fill('cat', S.category);
+  fill('name', S.name);
+  fill('kana', S.nameKana);
+  fill('msg', S.message);
+  $('foot').textContent = '© ' + (S.name || '');
+
+  var cover = $('cover');
+  if (S.photo) {
+    var img = el('img'); img.src = S.photo; img.alt = (S.name || 'お店') + 'の写真'; cover.appendChild(img);
+  } else {
+    var mono = el('span', 'mono', (S.name || '').trim().charAt(0).toUpperCase()); mono.setAttribute('aria-hidden', 'true'); cover.appendChild(mono);
+  }
+
+  var ICON = {
+    line: '<path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>',
+    ig: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7v.1"/>',
+    tel: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/>',
+    map: '<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>'
+  };
+  function addLink(href, icon, label, external) {
+    var a = el('a'); a.href = href;
+    if (external) { a.target = '_blank'; a.rel = 'noopener'; }
+    a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICON[icon] + '</svg>';
+    a.appendChild(el('span', '', label));
+    $('links').appendChild(a);
+  }
+  var mapUrl = S.mapUrl || (S.address ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(S.address) : '');
+  var tel = (S.phone || '').replace(/[^\d+]/g, '');
+  if (S.lineUrl) addLink(S.lineUrl, 'line', 'LINEで問い合わせ', true);
+  if (S.instagram) addLink('https://www.instagram.com/' + encodeURIComponent(S.instagram) + '/', 'ig', '@' + S.instagram, true);
+  if (tel) addLink('tel:' + tel, 'tel', '電話する', false);
+  if (mapUrl) addLink(mapUrl, 'map', '地図を見る', true);
+  if (!$('links').children.length) $('links').hidden = true;
+
+  if (S.menus && S.menus.length) {
+    S.menus.forEach(function (m) {
+      var li = el('li');
+      li.appendChild(el('span', 'mn', m.name));
+      li.appendChild(el('span', 'mp', m.price || ''));
+      if (m.time) li.appendChild(el('span', 'mt', m.time));
+      $('menu').appendChild(li);
+    });
+    fill('menu-note', S.menuNote);
+    $('menu-sec').hidden = false;
+  }
+
+  function row(label, value, sub, link) {
+    if (!value) return;
+    var d = el('div'), dd = el('dd');
+    d.appendChild(el('dt', '', label));
+    dd.appendChild(document.createTextNode(value));
+    if (sub) dd.appendChild(el('small', '', sub));
+    if (link) { var a = el('a', '', link.text); a.href = link.href; if (link.ext) { a.target = '_blank'; a.rel = 'noopener'; } dd.appendChild(a); }
+    d.appendChild(dd);
+    $('info').appendChild(d);
+  }
+  row('営業時間', S.hours);
+  row('定休日', S.holidays);
+  row('住所', S.address, S.access, mapUrl ? { text: '地図を見る', href: mapUrl, ext: true } : null);
+  if (tel) row('電話', S.phone, '', { text: '電話をかける', href: 'tel:' + tel });
+  if ($('info').children.length) $('info-sec').hidden = false;
+
+  if (S.notes && S.notes.length) {
+    S.notes.forEach(function (n) { $('notes').appendChild(el('li', '', n)); });
+    $('notes-sec').hidden = false;
+  }
+
+  // ---- 予約ボタン ----
+  var books = [$('book'), $('bar-book')];
+  function plainHref() {
+    // LINEの中では openExternalBrowser=1 を付けると、LINEがふだんのブラウザで開いてくれる
+    return app === 'LINE' ? url + (url.indexOf('?') < 0 ? '?' : '&') + 'openExternalBrowser=1' : url;
+  }
+  function intentHref() {
+    return 'intent://' + url.replace(/^https:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+  }
+
+  if (!url) {
+    books.forEach(function (b) { b.removeAttribute('href'); b.setAttribute('aria-disabled', 'true'); });
+    $('book-label').textContent = '予約ページを準備中です';
+    document.querySelector('.cta-sub').hidden = true;
+  } else {
+    books.forEach(function (b) { b.href = plainHref(); b.addEventListener('click', onBook); });
+  }
+
+  function onBook(e) {
+    if (!app || app === 'LINE') return; // ふつうに開く
+    e.preventDefault();
+    if (isAndroid) {
+      // Chromeに渡す。開けなかったとき（画面が残ったまま）は案内を出す
+      var timer = setTimeout(openSheet, 1600);
+      document.addEventListener('visibilitychange', function () { if (document.hidden) clearTimeout(timer); }, { once: true });
+      location.href = intentHref();
+      return;
+    }
+    openSheet();
+  }
+
+  // ---- アプリ内ブラウザの案内 ----
+  var inApp = app && app !== 'LINE';
+  var browser = isAndroid ? 'Chrome' : 'Safari';
+  if (url && inApp) {
+    $('hint').hidden = false;
+    $('hint-title').textContent = app + 'から開いている方へ';
+    $('hint-text').textContent = isAndroid
+      ? 'ボタンを押すと、Chromeで予約画面が開きます。'
+      : '予約画面はSafariで開くとスムーズです。ボタンを押すと、開き方をご案内します。';
+  }
+  $('sheet-lead').textContent = (app || 'アプリ') + 'の中では、予約画面が正しく表示されないことがあります。' + browser + 'などのブラウザで開くと、スムーズにご予約いただけます。';
+  $('browser-name').textContent = browser;
+  if (isAndroid) {
+    $('dots-label').textContent = '「︙」';
+    $('m-dots').textContent = '︙';
+    $('step2').innerHTML = '<b>「外部ブラウザで開く」</b>（または「Chromeで開く」）を選ぶ';
+  }
+  $('m-host').textContent = location.hostname || 'salon.example.com';
+  $('url').value = url;
+  $('open-here').href = url || '#';
+
+  var sheet = $('sheet'), lastFocus = null;
+  function openSheet() {
+    lastFocus = document.activeElement;
+    sheet.hidden = false;
+    sheet.offsetWidth; // アニメーションのため
+    sheet.classList.add('open');
+    $('close').focus();
+  }
+  function closeSheet() {
+    sheet.classList.remove('open');
+    setTimeout(function () { sheet.hidden = true; }, 340);
+    if (lastFocus) lastFocus.focus();
+  }
+  $('close').addEventListener('click', closeSheet);
+  $('scrim').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+
+  $('copy').addEventListener('click', function () {
+    var btn = this, field = $('url');
+    function done() { btn.textContent = 'コピーしました'; btn.classList.add('done'); }
+    function legacy() {
+      field.focus(); field.select(); field.setSelectionRange(0, field.value.length);
+      var ok = false; try { ok = document.execCommand('copy'); } catch (err) {}
+      if (ok) done(); else btn.textContent = '上のURLを長押ししてコピーしてください';
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, legacy);
+    else legacy();
+  });
+
+  // ---- 下に固定の予約ボタン ----
+  if (url && 'IntersectionObserver' in window) {
+    var bar = $('bar');
+    new IntersectionObserver(function (entries) {
+      var off = !entries[0].isIntersecting && entries[0].boundingClientRect.top < 0;
+      bar.classList.toggle('show', off);
+      bar.setAttribute('aria-hidden', String(!off));
+      $('bar-book').tabIndex = off ? 0 : -1;
+    }).observe($('cta'));
+  }
+})();
+</script>
+</body>
+</html>
